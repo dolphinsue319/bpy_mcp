@@ -2,6 +2,7 @@
 """MCP Server for Blender Python SDK documentation search."""
 
 import logging
+import sys
 from typing import Optional
 import asyncio
 
@@ -13,7 +14,12 @@ from openai import AsyncOpenAI
 from utils import get_env_var, format_search_result, format_function_details
 from cache import DocumentationCache
 
-logging.basicConfig(level=logging.INFO)
+# Configure logging to use stderr to avoid interfering with MCP protocol
+logging.basicConfig(
+    level=logging.INFO,
+    stream=sys.stderr,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # Initialize FastMCP server

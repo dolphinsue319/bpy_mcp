@@ -106,19 +106,33 @@ poetry run python src/server.py
 
 ### 在 Claude Code 中設定
 
-編輯 Claude Code 的設定檔：
+在 macOS 上，編輯 Claude Desktop 的設定檔：
+
+**設定檔位置**：`~/Library/Application Support/Claude/claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "blender-docs": {
-      "command": "/path/to/bpy_mcp/scripts/start-server.sh"
+      "command": "/Users/your-username/Documents/bpy_mcp/scripts/start-server.sh",
+      "args": [],
+      "env": {}
     }
   }
 }
 ```
 
-**注意**：使用 `start-server.sh` 會自動處理虛擬環境和環境變數。
+**重要提醒**：
+- 必須使用**絕對路徑**，不能使用相對路徑或 `~`
+- 將 `/Users/your-username/Documents/bpy_mcp` 替換為您的實際專案路徑
+- 使用 `start-server.sh` 會自動處理虛擬環境和環境變數載入
+- 環境變數會從專案的 `.env` 檔案自動讀取
+
+**設定步驟**：
+1. 開啟 Finder，按 `Cmd+Shift+G`，輸入 `~/Library/Application Support/Claude/`
+2. 編輯或建立 `claude_desktop_config.json` 檔案
+3. 加入上述配置，記得替換成您的實際路徑
+4. 儲存檔案後重啟 Claude Desktop
 
 ### 在 Raycast 中設定
 
