@@ -53,6 +53,8 @@ Thumbs.db
 *.log
 .cache/
 temp/
+index_summary.json
+backups/
 
 # Blender documentation files
 blender_python_reference_4_5/
