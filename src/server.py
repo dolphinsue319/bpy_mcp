@@ -215,7 +215,10 @@ async def cache_stats() -> str:
         return f"Error retrieving cache statistics: {str(e)}"
 
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for the MCP server."""
+    global openai_client, pinecone_index, cache
+    
     # Check environment variables
     required_vars = ['OPENAI_API_KEY', 'PINECONE_API_KEY']
     for var in required_vars:
@@ -246,3 +249,7 @@ if __name__ == "__main__":
     
     # Run server
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()

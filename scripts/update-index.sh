@@ -20,14 +20,19 @@ echo ""
 
 cd "$PROJECT_ROOT"
 
-# Check if virtual environment exists
-if [ ! -d "venv" ]; then
-    echo -e "${RED}❌ Virtual environment not found${NC}"
-    echo "Please run ./scripts/setup.sh first"
+# Check if Poetry is installed
+if ! command -v poetry &> /dev/null; then
+    echo -e "${RED}❌ Error: Poetry not found${NC}"
+    echo "Please install Poetry first:"
+    echo "  curl -sSL https://install.python-poetry.org | python3 -"
     exit 1
 fi
 
-source venv/bin/activate
+# Check if dependencies are installed
+if ! poetry check &> /dev/null 2>&1; then
+    echo -e "${YELLOW}⚠️  Dependencies not installed. Installing...${NC}"
+    poetry install
+fi
 
 # Check environment
 if [ ! -f ".env" ]; then
@@ -76,8 +81,8 @@ echo ""
 echo -e "${GREEN}Starting index update...${NC}"
 echo ""
 
-# Run the indexer
-python src/indexer.py
+# Run the indexer with Poetry
+poetry run python src/indexer.py
 
 echo ""
 echo -e "${GREEN}✅ Index update complete!${NC}"

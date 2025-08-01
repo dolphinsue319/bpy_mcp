@@ -27,15 +27,18 @@ if [ ! -f ".env" ]; then
     exit 1
 fi
 
-# Check if virtual environment exists
-if [ ! -d "venv" ]; then
-    echo -e "${YELLOW}⚠️  Virtual environment not found. Creating one...${NC}"
-    python3 -m venv venv
-    echo "Installing dependencies..."
-    source venv/bin/activate
-    pip install -e .
-else
-    source venv/bin/activate
+# Check if Poetry is installed
+if ! command -v poetry &> /dev/null; then
+    echo -e "${RED}❌ Error: Poetry not found${NC}"
+    echo "Please install Poetry first:"
+    echo "  curl -sSL https://install.python-poetry.org | python3 -"
+    exit 1
+fi
+
+# Check if dependencies are installed
+if ! poetry check &> /dev/null 2>&1; then
+    echo -e "${YELLOW}⚠️  Dependencies not installed. Installing...${NC}"
+    poetry install
 fi
 
 # Verify required environment variables
@@ -64,5 +67,5 @@ echo "Your Claude Code should be configured to use:"
 echo "  Command: $PROJECT_ROOT/scripts/start-server.sh"
 echo ""
 
-# Start the server
-exec python src/server.py
+# Start the server with Poetry
+exec poetry run python src/server.py

@@ -22,6 +22,11 @@ cd "$PROJECT_ROOT"
 
 # Check Python version
 echo -e "${GREEN}1. Checking Python version...${NC}"
+if ! command -v python3 &> /dev/null; then
+    echo -e "${RED}   ❌ python3 not found. Please install Python 3.8 or newer.${NC}"
+    exit 1
+fi
+
 python_version=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
 required_version="3.8"
 
@@ -32,20 +37,31 @@ else
     exit 1
 fi
 
-# Create virtual environment
-echo -e "\n${GREEN}2. Setting up virtual environment...${NC}"
-if [ ! -d "venv" ]; then
-    python3 -m venv venv
-    echo "   ✓ Virtual environment created"
+# Check Poetry installation
+echo -e "\n${GREEN}2. Checking Poetry installation...${NC}"
+if ! command -v poetry &> /dev/null; then
+    echo -e "${YELLOW}   ⚠️  Poetry not found. Installing Poetry...${NC}"
+    curl -sSL https://install.python-poetry.org | python3 -
+    
+    # Add Poetry to PATH for this session
+    export PATH="$HOME/.local/bin:$PATH"
+    
+    # Verify installation
+    if ! command -v poetry &> /dev/null; then
+        echo -e "${RED}   ❌ Poetry installation failed. Please install manually:${NC}"
+        echo "      curl -sSL https://install.python-poetry.org | python3 -"
+        echo "      Then add Poetry to your PATH"
+        exit 1
+    fi
+    echo -e "   ✓ Poetry installed successfully"
 else
-    echo "   ✓ Virtual environment already exists"
+    poetry_version=$(poetry --version | cut -d' ' -f3)
+    echo -e "   ✓ Poetry $poetry_version found"
 fi
 
-# Activate and install dependencies
-source venv/bin/activate
+# Install dependencies with Poetry
 echo -e "\n${GREEN}3. Installing dependencies...${NC}"
-pip install --upgrade pip > /dev/null 2>&1
-pip install -e . > /dev/null 2>&1
+poetry install
 echo "   ✓ Dependencies installed"
 
 # Setup environment file
@@ -99,7 +115,7 @@ echo "======================================="
 all_ready=true
 
 # Check API keys
-if grep -q "^OPENAI_API_KEY=sk-" .env && grep -q "^PINECONE_API_KEY=..*-.*" .env; then
+if grep -q "^OPENAI_API_KEY=sk-" .env && grep -q "^PINECONE_API_KEY=.*-.*" .env; then
     echo "✓ API keys configured"
 else
     echo -e "${YELLOW}⚠️  API keys need to be configured in .env${NC}"
@@ -119,7 +135,7 @@ echo ""
 if [ "$all_ready" = true ]; then
     echo -e "${GREEN}🎉 Setup complete! Next steps:${NC}"
     echo "1. Run the indexer to build the search index:"
-    echo "   python src/indexer.py"
+    echo "   poetry run python src/indexer.py"
     echo ""
     echo "2. Start the MCP server:"
     echo "   ./scripts/start-server.sh"

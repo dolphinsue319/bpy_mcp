@@ -35,18 +35,25 @@ mkdir blender_python_reference_4_5
 
 ### 3. 設定環境
 
-使用提供的設定腳本：
+使用提供的設定腳本（推薦）：
 
 ```bash
 ./scripts/setup.sh
 ```
 
-或手動安裝：
+這個腳本會：
+- 檢查並安裝 Poetry（如果還沒安裝）
+- 使用 Poetry 安裝所有依賴
+- 設定環境變數
+
+或手動設定：
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -e .
+# 安裝 Poetry
+curl -sSL https://install.python-poetry.org | python3 -
+
+# 安裝依賴
+poetry install
 ```
 
 ### 4. 設定環境變數
@@ -76,7 +83,7 @@ PINECONE_INDEX_NAME=blender-docs
 或手動執行：
 
 ```bash
-python src/indexer.py
+poetry run python src/indexer.py
 ```
 
 這會解析 `blender_python_reference_4_5/` 目錄中的所有 HTML 文件並建立 Pinecone 向量索引。預計需要 5-10 分鐘。
@@ -94,8 +101,7 @@ python src/indexer.py
 或手動啟動：
 
 ```bash
-source venv/bin/activate
-python src/server.py
+poetry run python src/server.py
 ```
 
 ### 在 Claude Code 中設定
@@ -207,6 +213,13 @@ bpy_mcp/
 └── README.md
 ```
 
+## 需求
+
+- Python 3.8+
+- Poetry（套件管理）
+- OpenAI API key
+- Pinecone API key
+
 ## 成本估算
 
 - **初始索引建立**：約 $0.10 USD（一次性）
@@ -230,6 +243,17 @@ bpy_mcp/
 
 ## 故障排除
 
+### Poetry 安裝問題
+
+如果遇到 Poetry 安裝問題：
+```bash
+# 手動安裝
+curl -sSL https://install.python-poetry.org | python3 -
+
+# 添加到 PATH
+export PATH="$HOME/.local/bin:$PATH"
+```
+
 ### 索引建立失敗
 
 檢查：
@@ -242,7 +266,8 @@ bpy_mcp/
 檢查：
 1. Server 是否正在運行
 2. 路徑設定是否正確
-3. Python 環境是否正確
+3. Poetry 是否正確安裝
+4. 使用 `start-server.sh` 腳本啟動
 
 ### 搜尋結果不準確
 
