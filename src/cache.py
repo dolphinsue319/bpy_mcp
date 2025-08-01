@@ -6,6 +6,7 @@ Reduces API calls and improves response time.
 import sqlite3
 import json
 import time
+import os
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 import hashlib
@@ -25,8 +26,21 @@ class DocumentationCache:
             cache_dir: Directory to store cache database
             ttl_seconds: Time to live in seconds (default: 24 hours)
         """
+        # Support environment variable override
+        cache_dir = os.getenv('BLENDER_CACHE_DIR', cache_dir)
+        ttl_seconds = int(os.getenv('CACHE_TTL_SECONDS', str(ttl_seconds)))
+        
         self.cache_dir = Path(cache_dir)
-        self.cache_dir.mkdir(exist_ok=True)
+        try:
+            self.cache_dir.mkdir(exist_ok=True)
+        except PermissionError as e:
+            logger.error(f"Cannot create cache directory {self.cache_dir}: {e}")
+            logger.warning("Cache will be disabled for this session")
+            # Set a flag to disable cache operations
+            self.disabled = True
+            return
+        
+        self.disabled = False
         self.db_path = self.cache_dir / "blender_docs_cache.db"
         self.ttl_seconds = ttl_seconds
         
@@ -79,6 +93,9 @@ class DocumentationCache:
         Returns:
             List of search results or None if not cached/expired
         """
+        if self.disabled:
+            return None
+            
         query_hash = self._hash_query(query, limit)
         current_time = time.time()
         
@@ -115,6 +132,9 @@ class DocumentationCache:
     
     def cache_search_results(self, query: str, limit: int, results: List[Dict[str, Any]]):
         """Cache search results."""
+        if self.disabled:
+            return
+            
         query_hash = self._hash_query(query, limit)
         
         with sqlite3.connect(self.db_path) as conn:
@@ -133,6 +153,9 @@ class DocumentationCache:
     
     def get_function_details(self, function_path: str) -> Optional[Dict[str, Any]]:
         """Get cached function details if available."""
+        if self.disabled:
+            return None
+            
         current_time = time.time()
         
         with sqlite3.connect(self.db_path) as conn:
@@ -164,6 +187,9 @@ class DocumentationCache:
     
     def cache_function_details(self, function_path: str, details: Dict[str, Any]):
         """Cache function details."""
+        if self.disabled:
+            return
+            
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
                 INSERT OR REPLACE INTO function_cache 
@@ -179,6 +205,9 @@ class DocumentationCache:
     
     def clear_expired(self):
         """Remove all expired cache entries."""
+        if self.disabled:
+            return 0
+            
         current_time = time.time()
         expired_time = current_time - self.ttl_seconds
         
@@ -200,6 +229,19 @@ class DocumentationCache:
     
     def get_stats(self) -> Dict[str, Any]:
         """Get cache statistics."""
+        if self.disabled:
+            return {
+                "search_entries": 0,
+                "function_entries": 0,
+                "total_entries": 0,
+                "search_hits": 0,
+                "function_hits": 0,
+                "total_hits": 0,
+                "database_size_mb": 0,
+                "ttl_hours": self.ttl_seconds / 3600,
+                "status": "disabled"
+            }
+            
         with sqlite3.connect(self.db_path) as conn:
             # Count entries
             search_count = conn.execute("SELECT COUNT(*) FROM search_cache").fetchone()[0]
@@ -225,6 +267,9 @@ class DocumentationCache:
     
     def clear_all(self):
         """Clear all cache entries."""
+        if self.disabled:
+            return
+            
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("DELETE FROM search_cache")
             conn.execute("DELETE FROM function_cache")
