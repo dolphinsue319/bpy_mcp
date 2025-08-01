@@ -114,7 +114,7 @@ poetry run python src/server.py
 {
   "mcpServers": {
     "blender-docs": {
-      "command": "/Users/your-username/Documents/bpy_mcp/scripts/start-server.sh",
+      "command": "/Users/your-username/Documents/bpy_mcp/scripts/start-server-direct.sh",
       "args": [],
       "env": {}
     }
@@ -125,7 +125,7 @@ poetry run python src/server.py
 **重要提醒**：
 - 必須使用**絕對路徑**，不能使用相對路徑或 `~`
 - 將 `/Users/your-username/Documents/bpy_mcp` 替換為您的實際專案路徑
-- 使用 `start-server.sh` 會自動處理虛擬環境和環境變數載入
+- Claude Desktop 使用 `start-server-direct.sh`（不依賴 Poetry PATH）
 - 環境變數會從專案的 `.env` 檔案自動讀取
 
 **設定步驟**：

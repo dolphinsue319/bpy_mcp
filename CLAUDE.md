@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a Blender Python SDK Documentation MCP (Model Context Protocol) server that provides semantic search capabilities for Blender's Python API documentation. The server indexes 2,050+ HTML documentation files and serves them through MCP tools for use with Claude Code and Raycast.
 
+## Configuration Paths
+
+- `/Users/kediasu/Library/Application Support/Claude/claude_desktop_config.json` is the configuration file for setting the MCP path in Claude app
+
 ## Key Commands
 
 ### Development Setup
