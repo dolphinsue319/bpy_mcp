@@ -7,6 +7,7 @@
 - 🔍 **語意搜尋**：使用自然語言查詢 Blender Python API
 - 📚 **完整覆蓋**：索引 2,050+ 個 Blender Python 文件
 - ⚡ **快速查找**：直接根據函式路徑獲取詳細資訊
+- 💾 **本地快取**：SQLite 快取減少 API 呼叫，提升響應速度
 - 🤖 **MCP 整合**：支援 Claude Code 和 Raycast
 
 ## 安裝步驟
@@ -32,9 +33,19 @@ mkdir blender_python_reference_4_5
 
 **注意**：`blender_python_reference_4_5/` 資料夾已加入 `.gitignore`，不會被提交到版本控制。
 
-### 3. 安裝依賴
+### 3. 設定環境
+
+使用提供的設定腳本：
 
 ```bash
+./scripts/setup.sh
+```
+
+或手動安裝：
+
+```bash
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -e .
 ```
 
@@ -54,7 +65,15 @@ PINECONE_API_KEY=...
 PINECONE_INDEX_NAME=blender-docs
 ```
 
-### 5. 建立索引（只需執行一次）
+### 5. 建立索引
+
+使用索引更新腳本：
+
+```bash
+./scripts/update-index.sh
+```
+
+或手動執行：
 
 ```bash
 python src/indexer.py
@@ -66,27 +85,34 @@ python src/indexer.py
 
 ### 啟動 MCP Server
 
+使用啟動腳本（推薦）：
+
 ```bash
+./scripts/start-server.sh
+```
+
+或手動啟動：
+
+```bash
+source venv/bin/activate
 python src/server.py
 ```
 
 ### 在 Claude Code 中設定
 
-編輯 Claude Code 的設定檔（通常位於 `~/.config/claude/claude_code_config.json`）：
+編輯 Claude Code 的設定檔：
 
 ```json
 {
   "mcpServers": {
     "blender-docs": {
-      "command": "python",
-      "args": ["/path/to/bpy_mcp/src/server.py"],
-      "env": {
-        "PYTHONPATH": "/path/to/bpy_mcp"
-      }
+      "command": "/path/to/bpy_mcp/scripts/start-server.sh"
     }
   }
 }
 ```
+
+**注意**：使用 `start-server.sh` 會自動處理虛擬環境和環境變數。
 
 ### 在 Raycast 中設定
 
@@ -133,6 +159,16 @@ list_modules("bpy.ops")  # 列出 bpy.ops 的子模組
 **參數**：
 - `parent_module` (str, optional): 父模組路徑
 
+### 4. cache_stats - 快取統計
+
+查看快取使用情況：
+
+```
+cache_stats()
+```
+
+返回快取命中率、儲存大小等統計資訊。
+
 ## 使用範例
 
 在 Claude Code 中使用：
@@ -158,7 +194,12 @@ bpy_mcp/
 │   ├── server.py      # MCP server 主程式
 │   ├── indexer.py     # 建立索引腳本
 │   ├── parser.py      # HTML 解析工具
+│   ├── cache.py       # SQLite 快取管理
 │   └── utils.py       # 共用工具函式
+├── scripts/
+│   ├── start-server.sh   # 啟動腳本
+│   ├── setup.sh         # 設定腳本
+│   └── update-index.sh  # 索引更新腳本
 ├── blender_python_reference_4_5/  # Blender 文件目錄 (需自行準備，不在版本控制中)
 ├── .env.example       # 環境變數範例
 ├── .gitignore
@@ -178,6 +219,14 @@ bpy_mcp/
 - **Vector Database**: Pinecone (Serverless)
 - **MCP Framework**: FastMCP
 - **文件解析**: BeautifulSoup4
+- **本地快取**: SQLite (24 小時 TTL)
+
+### 快取機制
+
+- 搜尋結果和函式詳情會自動快取 24 小時
+- 減少重複的 API 呼叫，提升響應速度
+- 快取資料儲存在 `.cache/` 目錄
+- 啟動時自動清理過期快取
 
 ## 故障排除
 

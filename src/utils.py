@@ -20,7 +20,7 @@ def get_env_var(key: str, default: str = None) -> str:
     return value
 
 
-def format_search_result(matches: List[Dict[str, Any]], query: str) -> str:
+def format_search_result(matches: List[Any], query: str) -> str:
     """Format Pinecone search results for display."""
     
     if not matches:
@@ -29,8 +29,15 @@ def format_search_result(matches: List[Dict[str, Any]], query: str) -> str:
     output = [f"Search results for '{query}':\n"]
     
     for i, match in enumerate(matches, 1):
-        metadata = match.get('metadata', {})
-        score = match.get('score', 0)
+        # Handle both Pinecone match objects and cached dict format
+        if hasattr(match, 'metadata'):
+            # Pinecone match object
+            metadata = match.metadata
+            score = match.score
+        else:
+            # Cached dict format
+            metadata = match.get('metadata', {})
+            score = match.get('score', 0)
         
         # Extract info from metadata
         func_path = metadata.get('function_path', 'Unknown')

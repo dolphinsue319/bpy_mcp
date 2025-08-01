@@ -3,6 +3,7 @@
 
 import logging
 from typing import Optional
+import asyncio
 
 from fastmcp import FastMCP
 
@@ -10,6 +11,7 @@ from pinecone import Pinecone
 from openai import AsyncOpenAI
 
 from utils import get_env_var, format_search_result, format_function_details
+from cache import DocumentationCache
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,6 +23,7 @@ mcp = FastMCP("Blender Docs Search")
 openai_client: Optional[AsyncOpenAI] = None
 pinecone_index = None
 embedding_model = "text-embedding-3-small"
+cache: Optional[DocumentationCache] = None
 
 
 @mcp.tool()
@@ -40,6 +43,11 @@ async def search_docs(query: str, limit: int = 5) -> str:
     limit = max(1, min(20, limit))
     
     try:
+        # Check cache first
+        cached_results = cache.get_search_results(query, limit)
+        if cached_results:
+            return format_search_result(cached_results, query)
+        
         # Generate embedding for query
         embedding_response = await openai_client.embeddings.create(
             model=embedding_model,
@@ -53,6 +61,16 @@ async def search_docs(query: str, limit: int = 5) -> str:
             top_k=limit,
             include_metadata=True
         )
+        
+        # Cache the results (convert matches to serializable format)
+        cache_data = []
+        for match in results.matches:
+            cache_data.append({
+                'id': match.id,
+                'score': match.score,
+                'metadata': match.metadata
+            })
+        cache.cache_search_results(query, limit, cache_data)
         
         # Format results
         return format_search_result(results.matches, query)
@@ -75,6 +93,11 @@ async def get_function(function_path: str) -> str:
     """
     
     try:
+        # Check cache first
+        cached_details = cache.get_function_details(function_path)
+        if cached_details:
+            return format_function_details(cached_details)
+        
         # Fetch by ID from Pinecone
         fetch_response = pinecone_index.fetch(ids=[function_path])
         
@@ -99,6 +122,9 @@ async def get_function(function_path: str) -> str:
             metadata = results.matches[0].metadata
         else:
             metadata = fetch_response.vectors[function_path].metadata
+        
+        # Cache the function details
+        cache.cache_function_details(function_path, metadata)
         
         return format_function_details(metadata)
         
@@ -147,6 +173,48 @@ async def list_modules(parent_module: Optional[str] = None) -> str:
         return f"Error listing modules: {str(e)}"
 
 
+@mcp.tool()
+async def cache_stats() -> str:
+    """
+    Get cache statistics including hit rates and storage usage.
+    
+    Returns:
+        Cache statistics summary
+    """
+    try:
+        stats = cache.get_stats()
+        
+        output = [
+            "📊 Cache Statistics",
+            "==================",
+            f"Search entries: {stats['search_entries']}",
+            f"Function entries: {stats['function_entries']}",
+            f"Total entries: {stats['total_entries']}",
+            "",
+            f"Search hits: {stats['search_hits']}",
+            f"Function hits: {stats['function_hits']}",
+            f"Total hits: {stats['total_hits']}",
+            "",
+            f"Database size: {stats['database_size_mb']} MB",
+            f"TTL: {stats['ttl_hours']} hours",
+        ]
+        
+        # Calculate hit rates if there are entries
+        if stats['search_entries'] > 0:
+            search_hit_rate = (stats['search_hits'] / stats['search_entries']) * 100
+            output.append(f"Search hit rate: {search_hit_rate:.1f}%")
+        
+        if stats['function_entries'] > 0:
+            function_hit_rate = (stats['function_hits'] / stats['function_entries']) * 100
+            output.append(f"Function hit rate: {function_hit_rate:.1f}%")
+        
+        return '\n'.join(output)
+        
+    except Exception as e:
+        logger.error(f"Cache stats error: {e}")
+        return f"Error retrieving cache statistics: {str(e)}"
+
+
 if __name__ == "__main__":
     # Check environment variables
     required_vars = ['OPENAI_API_KEY', 'PINECONE_API_KEY']
@@ -164,6 +232,17 @@ if __name__ == "__main__":
     pinecone_client = Pinecone(api_key=get_env_var('PINECONE_API_KEY'))
     index_name = get_env_var('PINECONE_INDEX_NAME', 'blender-docs')
     pinecone_index = pinecone_client.Index(index_name)
+    
+    # Initialize cache
+    cache = DocumentationCache(
+        cache_dir=".cache",
+        ttl_seconds=86400  # 24 hours
+    )
+    
+    # Clean up expired cache entries on startup
+    expired_count = cache.clear_expired()
+    if expired_count > 0:
+        logger.info(f"Cleared {expired_count} expired cache entries")
     
     # Run server
     mcp.run()
